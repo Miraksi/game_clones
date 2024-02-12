@@ -16,3 +16,11 @@ rand = "0.8.5"
 version = "0.36.0"
 default-features = false
 features = ["ttf", "image"]
+
+[[bin]]
+name = "minesweeper"
+path = "src/minesweeper/main.rs"
+
+[[bin]]
+name = "space_invaders"
+path = "src/space_invaders/main.rs"
