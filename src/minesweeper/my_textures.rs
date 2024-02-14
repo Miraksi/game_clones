@@ -1,8 +1,4 @@
 use sdl2::{
-    image::LoadTexture,
-    event::Event,
-    keyboard::Keycode,
-    mouse::MouseButton,
     pixels::Color,
     rect::{Rect},
     render::{Canvas, Texture, TextureCreator},
