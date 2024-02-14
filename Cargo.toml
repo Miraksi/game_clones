@@ -18,5 +18,9 @@ name = "minesweeper"
 path = "src/minesweeper/main.rs"
 
 [[bin]]
+name = "minesweeper-server"
+path = "src/minesweeper/server.rs"
+
+[[bin]]
 name = "space_invaders"
 path = "src/space_invaders/main.rs"
