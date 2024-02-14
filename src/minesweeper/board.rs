@@ -7,6 +7,14 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
+pub enum Action {
+    Reveal(u32, u32),
+    ToggleFlag(u32, u32),
+    Won,
+    Quit,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum TileState {
     Hidden,
     Revealed,

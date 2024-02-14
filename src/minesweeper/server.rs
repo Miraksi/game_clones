@@ -1,25 +1,14 @@
 mod board;
 
-use sdl2::{
-    image::LoadTexture,
-    event::Event,
-    keyboard::Keycode,
-    mouse::MouseButton,
-    pixels::Color,
-    rect::{Rect},
-};
 use std::net::UdpSocket;
 use crate::board::{
     TileState,
     TileValue,
     Board,
+    Action,
 };
 
-const TILE_ROWS: u32 = 16;
-const TILE_COLUMNS: u32 = 30;
 const TILE_SIZE: u32 = 20;
-
-const BOMB_COUNT: u32 = 99;
 
 enum GameState {
     Menu,
@@ -28,6 +17,21 @@ enum GameState {
     GameOver,
 }
 
+fn await_client_action(socket: &UdpSocket) -> Result<Action, String> {
+    let mut buf = [0; 50];
+    let amt = socket.recv(&mut buf).map_err(|e| e.to_string())?;
+    let mut tmp: Vec<u8> = Vec::from(buf);
+    tmp.resize(amt, 0);
+    let serialized = String::from_utf8(Vec::from(tmp)).map_err(|e| e.to_string())?;
+    let action: Action = serde_json::from_str(&serialized).map_err(|e| e.to_string())?;
+    return Ok(action);
+}
+
+fn send_valid(socket: &UdpSocket, valid: bool) -> Result<(), String> {
+    let message = serde_json::to_string(&valid).map_err(|e| e.to_string())?;
+    socket.send(message.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 fn main() -> Result<(), String> {
     // let (mut pressed_i, mut pressed_j) = (None, None);
@@ -49,179 +53,82 @@ fn main() -> Result<(), String> {
     // sending board back
     socket.connect(src).map_err(|e| e.to_string())?;
     let message = serde_json::to_string(&board).expect("could'nt serialize the board");
-    let amt = socket.send(message.as_bytes()).map_err(|e| e.to_string())?;
+    socket.send(message.as_bytes()).map_err(|e| e.to_string())?;
 
-    return Ok(());
-    // let mut game_state = GameState::Menu;
-    // let mut event_pump = sdl_context.event_pump()?;
+    let mut game_state = GameState::InGame;
 
-    // 'game_loop: loop {
-    //     match game_state {
-    //         GameState::Menu => {
-    //             for event in event_pump.poll_iter() {
-    //                 match event {
-    //                     Event::Quit { .. }
-    //                     | Event::KeyDown {
-    //                             keycode: Some(Keycode::Escape),
-    //                             ..
-    //                     } => break 'game_loop,
-    //                     Event::KeyDown {
-    //                             keycode: Some(Keycode::Return),
-    //                             ..
-    //                     } => game_state = GameState::InGame,
-    //                     _ => {},
-    //                 };
-    //             }
-    //             canvas.set_draw_color(Color::RGB(50, 50, 50));
-    //             canvas.clear();
+    'game_loop: loop {
+        // wait for client move
+        let action = await_client_action(&socket)?;
+
+        match game_state {
+            GameState::InGame => {
+                match action {
+                    Action::Reveal(i,j) => {
+                        board.resolve_click(&mut game_state, i as usize, j as usize);
+                        send_valid(&socket, true)?;
+                    },
+                    Action::ToggleFlag(i,j) => {
+                        board.resolve_flag(i as usize, j as usize);
+                        send_valid(&socket, true)?;
+                    },
+                    Action::Won => {
+                        send_valid(&socket, false)?;
+                        break 'game_loop;
+                    },
+                    Action::Quit => {
+                        send_valid(&socket, true)?;
+                        break 'game_loop;
+                    },
+                }
+
+                if let GameState::GameOver = game_state {
+                    continue;
+                }
         
-    //             let center = Rect::new(0,0,TILE_SIZE * TILE_COLUMNS, TILE_SIZE * TILE_ROWS).center();
-    //             canvas.copy(
-    //                 &menu_texture,
-    //                 None,
-    //                 Rect::from_center(center, menu_rect.width(), menu_rect.height()),
-    //             )?;
+                game_state = GameState::Won;
+                'check_won: for row in board.iter_field() {
+                    for tile in row.iter() {
+                        match (tile.value(), tile.state()) {
+                            (TileValue::Adjacent(_), TileState::Hidden)
+                            | (TileValue::Adjacent(_), TileState::Flagged) 
+                            => {
+                                game_state = GameState::InGame;
+                                break 'check_won;
+                            },
+                            _ => {},
+                        };
+                    }
+                }
+            },
+
+            GameState::GameOver => {
+                match action {
+                    Action::Quit => {
+                        send_valid(&socket, true)?;
+                        break 'game_loop;
+                    },
+                    _ => {
+                        send_valid(&socket, false)?;
+                        break 'game_loop;
+                    },
+                }
+            },
+
+            GameState::Won => match action {
+                Action::Won => {
+                    send_valid(&socket, true)?;
+                    break 'game_loop;
+                },
+                _ => {
+                    send_valid(&socket, false)?;
+                    break 'game_loop;
+                },
+            },
+
+            GameState::Menu => panic!{"something strange happened"},
+        };
         
-    //             canvas.present();
-    //         },
-
-    //         GameState::InGame => {
-    //             for event in event_pump.poll_iter() {
-    //                 match event {
-    //                     Event::Quit { .. }
-    //                     | Event::KeyDown {
-    //                         keycode: Some(Keycode::Escape),
-    //                         ..
-    //                     } => break 'game_loop,
-    //                     Event::MouseButtonDown {
-    //                         mouse_btn: MouseButton::Left,
-    //                         x,
-    //                         y,
-    //                         ..
-    //                     } => {
-    //                         pressed_i = Some((y / TILE_SIZE as i32) as usize);
-    //                         pressed_j = Some((x / TILE_SIZE as i32) as usize);
-    //                     },
-    //                     Event::MouseButtonUp {
-    //                         mouse_btn: MouseButton::Left,
-    //                         x,
-    //                         y,
-    //                         ..
-    //                     } => {
-    //                         let i = (y / TILE_SIZE as i32) as usize;
-    //                         let j = (x / TILE_SIZE as i32) as usize;
-    //                         match (pressed_i, pressed_j) {
-    //                             (Some(i1), Some(j1)) => {
-    //                                 if i1 == i && j1 == j {
-    //                                     board.resolve_click(&mut game_state, i, j);
-    //                                 }
-    //                             }
-    //                             _ => continue,
-    //                         };
-    //                     },
-    //                     Event::MouseButtonDown {
-    //                         mouse_btn: MouseButton::Right,
-    //                         x,
-    //                         y,
-    //                         ..
-    //                     } => {
-    //                         let i = (y / TILE_SIZE as i32) as usize;
-    //                         let j = (x / TILE_SIZE as i32) as usize;
-    //                         board.resolve_flag(i, j);
-    //                     },
-    //                     _ => {},
-    //                 }
-    //             }
-
-    //             if let GameState::GameOver = game_state {
-    //                 continue;
-    //             }
-        
-    //             game_state = GameState::Won;
-    //             'check_won: for row in board.iter_field() {
-    //                 for tile in row.iter() {
-    //                     match (tile.value(), tile.state()) {
-    //                         (TileValue::Adjacent(_), TileState::Hidden)
-    //                         | (TileValue::Adjacent(_), TileState::Flagged) 
-    //                         => {
-    //                             game_state = GameState::InGame;
-    //                             break 'check_won;
-    //                         },
-    //                         _ => {},
-    //                     };
-    //                 }
-    //             }
-
-    //             canvas.set_draw_color(Color::RGB(0, 0, 0));
-    //             canvas.clear();
-    //             for row in board.iter_field() {
-    //                 for tile in row.iter() {
-    //                     match tile.state() {
-    //                         TileState::Revealed => {
-    //                             canvas.copy(
-    //                                 &revealed_texture,
-    //                                 None,
-    //                                 tile.rect(),
-    //                             )?;
-    //                             if let TileValue::Adjacent(x) = tile.value() {
-    //                                 canvas.copy(
-    //                                     number_textures.get(x as usize).expect(format!("texture for index {x} doesnt exist").as_str()),
-    //                                     None,
-    //                                     Rect::from_center(tile.center(), surface_rect.width(), surface_rect.height())
-    //                                 )?;
-    //                             } 
-    //                         },
-    //                         TileState::Flagged => {
-    //                             canvas.copy(
-    //                                 &flag_texture,
-    //                                 None,
-    //                                 tile.rect(),
-    //                             )?;
-    //                         },
-    //                         TileState::Hidden => {
-    //                             canvas.copy(
-    //                                 &hidden_texture,
-    //                                 None,
-    //                                 tile.rect(),
-    //                             )?;
-    //                         },
-    //                     }           
-    //                 }
-    //             }
-        
-    //             canvas.present();
-    //         },
-
-    //         GameState::GameOver => {
-    //             for event in event_pump.poll_iter() {
-    //                 match event {
-    //                     Event::Quit { .. }
-    //                     | Event::KeyDown {
-    //                             keycode: Some(Keycode::Escape),
-    //                             ..
-    //                     } => break 'game_loop,
-    //                     _ => {},
-    //                 };
-    //             }
-    //             canvas.set_draw_color(Color::RGB(50, 50, 50));
-    //             canvas.clear();
-        
-    //             let center = Rect::new(0,0,TILE_SIZE * TILE_COLUMNS, TILE_SIZE * TILE_ROWS).center();
-    //             canvas.copy(
-    //                 &end_texture,
-    //                 None,
-    //                 Rect::from_center(center, end_rect.width(), end_rect.height()),
-    //             )?;
-        
-    //             canvas.present();
-    //         },
-
-    //         GameState::Won => {
-    //             println!("you've beaten the game :)");
-    //             break 'game_loop;
-    //         },
-    //     }
-    // }
-
-    // Ok(())
+    }
+    Ok(())
 }

@@ -15,6 +15,7 @@ use crate::board::{
     TileState,
     TileValue,
     Board,
+    Action,
 };
 
 const TILE_ROWS: u32 = 9;
@@ -30,6 +31,20 @@ enum GameState {
     GameOver,
 }
 
+fn validate_action(socket: &UdpSocket, action: Action) -> Result<bool, String> {
+    // send action
+    let message = serde_json::to_string(&action).map_err(|e| e.to_string())?;
+    socket.send(message.as_bytes()).map_err(|e| e.to_string())?;
+
+    // receive validity
+    let mut buf = [0; 50];
+    let amt = socket.recv(&mut buf).map_err(|e| e.to_string())?;
+    let mut tmp: Vec<u8> = Vec::from(buf);
+    tmp.resize(amt, 0);
+    let serialized = String::from_utf8(Vec::from(tmp)).map_err(|e| e.to_string())?;
+    let is_valid: bool = serde_json::from_str(&serialized).map_err(|e| e.to_string())?;
+    return Ok(is_valid);
+}
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -106,7 +121,13 @@ fn main() -> Result<(), String> {
                         | Event::KeyDown {
                                 keycode: Some(Keycode::Escape),
                                 ..
-                        } => break 'game_loop,
+                        } => match validate_action(&socket, Action::Quit)? {
+                            true => break 'game_loop,
+                            false => {
+                                println!("Not a valid action");
+                                continue;
+                            },
+                        },
                         Event::KeyDown {
                                 keycode: Some(Keycode::Return),
                                 ..
@@ -134,7 +155,13 @@ fn main() -> Result<(), String> {
                         | Event::KeyDown {
                             keycode: Some(Keycode::Escape),
                             ..
-                        } => break 'game_loop,
+                        } => match validate_action(&socket, Action::Quit)? {
+                            true => break 'game_loop,
+                            false => {
+                                println!("Not a valid action");
+                                continue;
+                            },
+                        },
                         Event::MouseButtonDown {
                             mouse_btn: MouseButton::Left,
                             x,
@@ -155,7 +182,13 @@ fn main() -> Result<(), String> {
                             match (pressed_i, pressed_j) {
                                 (Some(i1), Some(j1)) => {
                                     if i1 == i && j1 == j {
-                                        board.resolve_click(&mut game_state, i, j);
+                                        match validate_action(&socket, Action::Reveal(i as u32,j as u32))? {
+                                            true => board.resolve_click(&mut game_state, i, j),
+                                            false => {
+                                                println!("Not a valid action");
+                                                continue;
+                                            },
+                                        };
                                     }
                                 }
                                 _ => continue,
@@ -169,7 +202,14 @@ fn main() -> Result<(), String> {
                         } => {
                             let i = (y / TILE_SIZE as i32) as usize;
                             let j = (x / TILE_SIZE as i32) as usize;
-                            board.resolve_flag(i, j);
+                            match validate_action(&socket, Action::ToggleFlag(i as u32,j as u32))? {
+                                true => board.resolve_flag(i, j),
+                                false => {
+                                    println!("Not a valid action");
+                                    continue;
+                                },
+                            };
+                            
                         },
                         _ => {},
                     }
@@ -241,7 +281,13 @@ fn main() -> Result<(), String> {
                         | Event::KeyDown {
                                 keycode: Some(Keycode::Escape),
                                 ..
-                        } => break 'game_loop,
+                        } => match validate_action(&socket, Action::Quit)? {
+                            true => break 'game_loop,
+                            false => {
+                                println!("Not a valid action");
+                                continue;
+                            },
+                        },
                         _ => {},
                     };
                 }
@@ -260,7 +306,10 @@ fn main() -> Result<(), String> {
 
             GameState::Won => {
                 println!("you've beaten the game :)");
-                break 'game_loop;
+                match validate_action(&socket, Action::Won)? {
+                    true => break 'game_loop,
+                    false => panic!{"should'nt have won"},
+                };
             },
         }
     }
