@@ -1,33 +1,37 @@
-use sdl2::rect::Rect;
+use sdl2::rect::{Point, Rect};
+use serde::{Serialize, Deserialize};
 use rand::Rng;
 use crate::{
     TILE_SIZE,
     GameState,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum TileState {
     Hidden,
     Revealed,
     Flagged,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum TileValue {
     Bomb,
     Adjacent(u32),
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Tile {
     state: TileState,
-    rect: Rect,
+    x: i32,
+    y: i32,
     value: TileValue,
 }
 impl Tile {
     pub fn new_blank(x: i32, y: i32) -> Self {
         Tile {
             state: TileState::Hidden,
-            rect: Rect::new(x, y, TILE_SIZE, TILE_SIZE),
+            x: x,
+            y: y,
             value: TileValue::Adjacent(0),
         }
     }
@@ -53,10 +57,10 @@ impl Tile {
         self.state = state;
     }
     pub fn rect(&self) -> Rect {
-        self.rect
+        Rect::new(self.x, self.y, TILE_SIZE, TILE_SIZE)
     }
-    pub fn rect_ref(&self) -> &Rect {
-        &(self.rect)
+    pub fn center(&self) -> Point {
+        self.rect().center()
     }
 }
 
@@ -116,6 +120,7 @@ pub fn build_minefield(row_count: u32, col_count: u32, mut bomb_count: u32) -> V
     return minefield;
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Board {
     minefield: Vec<Vec<Tile>>,
     tile_rows: u32,

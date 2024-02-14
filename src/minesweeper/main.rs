@@ -192,7 +192,7 @@ fn main() -> Result<(), String> {
                                     canvas.copy(
                                         number_textures.get(x as usize).expect(format!("texture for index {x} doesnt exist").as_str()),
                                         None,
-                                        Rect::from_center(tile.rect_ref().center(), surface_rect.width(), surface_rect.height())
+                                        Rect::from_center(tile.center(), surface_rect.width(), surface_rect.height())
                                     )?;
                                 } 
                             },
