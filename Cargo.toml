@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 serde = {version = "1.0.196", features = ["derive"]}
+serde_json = "1.0"
 
 [dependencies.sdl2]
 version = "0.36.0"
@@ -21,6 +22,10 @@ path = "src/minesweeper/main.rs"
 [[bin]]
 name = "minesweeper-server"
 path = "src/minesweeper/server.rs"
+
+[[bin]]
+name = "minesweeper-client"
+path = "src/minesweeper/client.rs"
 
 [[bin]]
 name = "space_invaders"
