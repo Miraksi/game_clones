@@ -80,10 +80,14 @@ fn main() -> Result<(), String> {
     let (menu_texture, menu_rect) = text_texture(&mut texture_creator5, "> Start <", 24)?;
 
     let mut texture_creator6 = canvas.texture_creator();
-    let (end_texture, end_rect) = text_texture(&mut texture_creator6, "Game Over!", 24)?;
+    let (game_over_texture, game_over_rect) = text_texture(&mut texture_creator6, "Game Over!", 24)?;
+
+    let mut texture_creator7 = canvas.texture_creator();
+    let (won_texture, won_rect) = text_texture(&mut texture_creator7, "You have won :)", 24)?;
     
     let (mut pressed_i, mut pressed_j) = (None, None);
     let mut board = Board::new(5, 5, 1);
+    let (mut end_texture, mut end_rect) = (&game_over_texture, &game_over_rect);
 
     // initialize textbox
     let mut boxes = vec![
@@ -230,19 +234,10 @@ fn main() -> Result<(), String> {
                     continue;
                 }
         
-                game_state = GameState::Won;
-                'check_won: for row in board.iter_field() {
-                    for tile in row.iter() {
-                        match (tile.value(), tile.state()) {
-                            (TileValue::Adjacent(_), TileState::Hidden)
-                            | (TileValue::Adjacent(_), TileState::Flagged) 
-                            => {
-                                game_state = GameState::InGame;
-                                break 'check_won;
-                            },
-                            _ => {},
-                        };
-                    }
+                game_state = board.check_game_state();
+                if let GameState::Won = game_state {
+                    end_rect = &won_rect;
+                    end_texture = &won_texture;
                 }
 
                 canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -285,7 +280,8 @@ fn main() -> Result<(), String> {
                 canvas.present();
             },
 
-            GameState::GameOver => {
+            GameState::GameOver
+            | GameState::Won => {
                 for event in event_pump.poll_iter() {
                     match event {
                         Event::Quit { .. }
@@ -293,6 +289,18 @@ fn main() -> Result<(), String> {
                                 keycode: Some(Keycode::Escape),
                                 ..
                         } => break 'game_loop,
+                        Event::KeyDown {
+                                keycode: Some(Keycode::Return),
+                                ..
+                        } => {
+                            end_rect = &game_over_rect;
+                            end_texture = &game_over_texture;
+                            game_state = GameState::Menu;
+                            canvas
+                                .window_mut()
+                                .set_size(MENU_WIDTH, MENU_HEIGHT)
+                                .map_err(|e| e.to_string())?;
+                        },
                         _ => {},
                     };
                 }
@@ -301,7 +309,7 @@ fn main() -> Result<(), String> {
         
                 let center = Rect::new(0,0,TILE_SIZE * board.tile_columns, TILE_SIZE * board.tile_rows).center();
                 canvas.copy(
-                    &end_texture,
+                    end_texture,
                     None,
                     Rect::from_center(center, end_rect.width(), end_rect.height()),
                 )?;

@@ -285,6 +285,22 @@ impl Board {
     pub fn iter_field(&self) -> std::slice::Iter<Vec<Tile>> {
         return self.minefield.iter()
     }
+
+    pub fn check_game_state(&self) -> GameState {
+        for row in self.iter_field() {
+            for tile in row.iter() {
+                match (tile.value(), tile.state()) {
+                    (TileValue::Adjacent(_), TileState::Hidden)
+                    | (TileValue::Adjacent(_), TileState::Flagged) 
+                    => {
+                        return GameState::InGame
+                    },
+                    _ => {},
+                };
+            }
+        }
+        GameState::Won
+    }
 }
 
 pub fn clean_input(input: &str) -> String {
