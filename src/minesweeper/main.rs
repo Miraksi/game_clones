@@ -7,10 +7,12 @@ use sdl2::{
     keyboard::Keycode,
     mouse::MouseButton,
     pixels::Color,
-    rect::{Rect},
+    rect::{Rect, Point},
 };
 use crate::my_textures::*;
 use crate::board::{
+    clean_input,
+    input_to_number,
     TileState,
     TileValue,
     Board,
@@ -33,17 +35,19 @@ enum GameState {
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let text_subsystem = video_subsystem.text_input();
     
-    let mut window = video_subsystem
+    let window = video_subsystem
         .window(
-            "SpaceInvaders",
+            "Minesweeper",
             TILE_COLUMNS * TILE_SIZE,
             TILE_ROWS * TILE_SIZE,
         )
         .position_centered()
+        .resizable()
         .build()
         .map_err(|e| e.to_string())?;
-    window.set_bordered(false);
+    // window.set_bordered(false);
 
     let mut canvas = window
         .into_canvas()
@@ -56,26 +60,40 @@ fn main() -> Result<(), String> {
     canvas.clear();
     canvas.present();
 
-    
-    let mut texture_creator1 = canvas.texture_creator();
-    let (hidden_texture, revealed_texture) = tile_textures(&mut canvas, &mut texture_creator1)?;
-
     let mut texture_creator2 = canvas.texture_creator();
     let (number_textures, surface_rect) = number_textures(&mut texture_creator2)?;
 
     let texture_creator3 = canvas.texture_creator();
     let flag_texture = texture_creator3
-        .load_texture("assets/flag.svg")
+        .load_texture("assets/flag_tile.png")
+        .map_err(|e| e.to_string())?;
+
+    let texture_creator6 = canvas.texture_creator();
+    let hidden_texture = texture_creator6
+        .load_texture("assets/hidden_tile.png")
+        .map_err(|e| e.to_string())?;
+
+    let texture_creator7 = canvas.texture_creator();
+    let revealed_texture = texture_creator7
+        .load_texture("assets/revealed_tile.png")
         .map_err(|e| e.to_string())?;
 
     let mut texture_creator4 = canvas.texture_creator();
-    let (menu_texture, menu_rect) = text_texture(&mut texture_creator4, "> Start <")?;
+    let (menu_texture, menu_rect) = text_texture(&mut texture_creator4, "> Start <", 24)?;
 
     let mut texture_creator5 = canvas.texture_creator();
-    let (end_texture, end_rect) = text_texture(&mut texture_creator5, "Game Over!")?;
+    let (end_texture, end_rect) = text_texture(&mut texture_creator5, "Game Over!", 24)?;
     
     let (mut pressed_i, mut pressed_j) = (None, None);
     let mut board = Board::new(TILE_ROWS, TILE_COLUMNS, BOMB_COUNT);
+
+    // initialize textbox
+    let mut boxes = vec![
+        (Rect::new(5, 5, 100, 20), "Width: 30".to_string()),
+        (Rect::new(5, 25, 100, 20), "Height: 16".to_string()),
+        (Rect::new(5, 45, 100, 20), "Bombs: 99".to_string()),
+    ];
+    let mut to_edit: Option<usize> = None;
 
     let mut game_state = GameState::Menu;
     let mut event_pump = sdl_context.event_pump()?;
@@ -93,7 +111,53 @@ fn main() -> Result<(), String> {
                         Event::KeyDown {
                                 keycode: Some(Keycode::Return),
                                 ..
-                        } => game_state = GameState::InGame,
+                        } => {
+                            game_state = GameState::InGame;
+                            text_subsystem.stop();
+                            let settings: Vec<u32> = boxes.iter().map(|(_,text)| input_to_number(text)).collect();
+                            board = Board::new(settings[1], settings[0], settings[2]);
+                            canvas
+                                .window_mut()
+                                .set_size(settings[0] * TILE_SIZE, settings[1] * TILE_SIZE)
+                                .map_err(|e| e.to_string())?;
+                        },
+                        Event::MouseButtonDown {
+                            mouse_btn: MouseButton::Left,
+                            x,
+                            y,
+                            ..
+                        } => {
+                            to_edit = None;
+                            for (i, (rect, _text)) in boxes.iter().enumerate() {
+                                if rect.contains_point(Point::new(x,y)) {
+                                    text_subsystem.start();
+                                    text_subsystem.set_rect(*rect);
+                                    to_edit = Some(i);
+                                }
+                            }
+                            if let None = to_edit {
+                                text_subsystem.stop();
+                            }
+                        },
+                        Event::TextInput {
+                            text,
+                            ..
+                        } => {
+                            let cleaned = clean_input(&text);
+                            let (_rect, input) = boxes.get_mut(to_edit.unwrap()).unwrap();
+                            input.push_str(&cleaned);
+                        },
+                        Event::KeyDown {
+                            keycode: Some(Keycode::Backspace),
+                            ..
+                        } => { 
+                            if let Some(i) = to_edit {
+                                let last = boxes.get_mut(i).unwrap().1.pop().unwrap();
+                                if !last.is_digit(10) {
+                                    boxes.get_mut(i).unwrap().1.push(last);
+                                }
+                            }
+                        },
                         _ => {},
                     };
                 }
@@ -106,7 +170,13 @@ fn main() -> Result<(), String> {
                     None,
                     Rect::from_center(center, menu_rect.width(), menu_rect.height()),
                 )?;
-        
+
+                // render user text
+                for (rect, text) in boxes.iter() {
+                    render_text(&mut canvas, rect.x(), rect.y(), text.as_str())?;
+                } 
+                
+
                 canvas.present();
             },
 

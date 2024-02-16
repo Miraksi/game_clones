@@ -54,9 +54,20 @@ pub fn tile_textures<'a> (canvas: &mut Canvas<Window>, texture_creator: &'a mut 
     Ok((hidden_texture, revealed_texture))
 }
 
-pub fn text_texture<'a> (texture_creator: &'a mut TextureCreator<WindowContext>, text: &str) -> Result<(Texture<'a>, Rect), String> {
+pub fn render_text(canvas: &mut Canvas<Window>, x: i32, y: i32, text: &str) -> Result<Rect, String> {
+    let mut texture_creator = canvas.texture_creator();
+    let (text_texture, text_rect) = text_texture(&mut texture_creator, text, 18)?;
+    canvas.copy(
+        &text_texture,
+        None,
+        Rect::new(x, y, text_rect.width(), text_rect.height()),
+    )?;
+    return Ok(text_rect);
+}
+
+pub fn text_texture<'a> (texture_creator: &'a mut TextureCreator<WindowContext>, text: &str, size: u16) -> Result<(Texture<'a>, Rect), String> {
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-    let font = ttf_context.load_font("assets/Monaco.ttf", 24)?;
+    let font = ttf_context.load_font("assets/Monaco.ttf", size)?;
 
     let text_surface = font.render(text)
         .solid(Color::BLACK)

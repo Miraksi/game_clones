@@ -81,7 +81,7 @@ fn main() -> Result<(), String> {
 
     let texture_creator3 = canvas.texture_creator();
     let flag_texture = texture_creator3
-        .load_texture("assets/flag.svg")
+        .load_texture("assets/flag_tile.png")
         .map_err(|e| e.to_string())?;
 
     let mut texture_creator4 = canvas.texture_creator();
