@@ -47,7 +47,7 @@ fn main() -> Result<(), String> {
         .resizable()
         .build()
         .map_err(|e| e.to_string())?;
-    // window.set_bordered(false);
+    window.set_bordered(false);
 
     let mut canvas = window
         .into_canvas()
@@ -60,29 +60,29 @@ fn main() -> Result<(), String> {
     canvas.clear();
     canvas.present();
 
-    let mut texture_creator2 = canvas.texture_creator();
-    let (number_textures, surface_rect) = number_textures(&mut texture_creator2)?;
+    let mut texture_creator1 = canvas.texture_creator();
+    let (number_textures, surface_rect) = number_textures(&mut texture_creator1)?;
 
-    let texture_creator3 = canvas.texture_creator();
-    let flag_texture = texture_creator3
+    let texture_creator2 = canvas.texture_creator();
+    let flag_texture = texture_creator2
         .load_texture("assets/flag_tile.png")
         .map_err(|e| e.to_string())?;
 
-    let texture_creator6 = canvas.texture_creator();
-    let hidden_texture = texture_creator6
+    let texture_creator3 = canvas.texture_creator();
+    let hidden_texture = texture_creator3
         .load_texture("assets/hidden_tile.png")
         .map_err(|e| e.to_string())?;
 
-    let texture_creator7 = canvas.texture_creator();
-    let revealed_texture = texture_creator7
+    let texture_creator4 = canvas.texture_creator();
+    let revealed_texture = texture_creator4
         .load_texture("assets/revealed_tile.png")
         .map_err(|e| e.to_string())?;
 
-    let mut texture_creator4 = canvas.texture_creator();
-    let (menu_texture, menu_rect) = text_texture(&mut texture_creator4, "> Start <", 24)?;
-
     let mut texture_creator5 = canvas.texture_creator();
-    let (end_texture, end_rect) = text_texture(&mut texture_creator5, "Game Over!", 24)?;
+    let (menu_texture, menu_rect) = text_texture(&mut texture_creator5, "> Start <", 24)?;
+
+    let mut texture_creator6 = canvas.texture_creator();
+    let (end_texture, end_rect) = text_texture(&mut texture_creator6, "Game Over!", 24)?;
     
     let (mut pressed_i, mut pressed_j) = (None, None);
     let mut board = Board::new(TILE_ROWS, TILE_COLUMNS, BOMB_COUNT);

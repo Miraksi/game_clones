@@ -74,21 +74,28 @@ fn main() -> Result<(), String> {
 
     
     let mut texture_creator1 = canvas.texture_creator();
-    let (hidden_texture, revealed_texture) = tile_textures(&mut canvas, &mut texture_creator1)?;
+    let (number_textures, surface_rect) = number_textures(&mut texture_creator1)?;
 
-    let mut texture_creator2 = canvas.texture_creator();
-    let (number_textures, surface_rect) = number_textures(&mut texture_creator2)?;
-
-    let texture_creator3 = canvas.texture_creator();
-    let flag_texture = texture_creator3
+    let texture_creator2 = canvas.texture_creator();
+    let flag_texture = texture_creator2
         .load_texture("assets/flag_tile.png")
         .map_err(|e| e.to_string())?;
 
-    let mut texture_creator4 = canvas.texture_creator();
-    let (menu_texture, menu_rect) = text_texture(&mut texture_creator4, "> Start <")?;
+    let texture_creator3 = canvas.texture_creator();
+    let hidden_texture = texture_creator3
+        .load_texture("assets/hidden_tile.png")
+        .map_err(|e| e.to_string())?;
+
+    let texture_creator4 = canvas.texture_creator();
+    let revealed_texture = texture_creator4
+        .load_texture("assets/revealed_tile.png")
+        .map_err(|e| e.to_string())?;
 
     let mut texture_creator5 = canvas.texture_creator();
-    let (end_texture, end_rect) = text_texture(&mut texture_creator5, "Game Over!")?;
+    let (menu_texture, menu_rect) = text_texture(&mut texture_creator5, "> Start <", 24)?;
+
+    let mut texture_creator6 = canvas.texture_creator();
+    let (end_texture, end_rect) = text_texture(&mut texture_creator6, "Game Over!", 24)?;
 
     // open socket
     let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
