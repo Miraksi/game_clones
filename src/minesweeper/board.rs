@@ -131,8 +131,8 @@ pub fn build_minefield(row_count: u32, col_count: u32, mut bomb_count: u32) -> V
 #[derive(Serialize, Deserialize)]
 pub struct Board {
     minefield: Vec<Vec<Tile>>,
-    tile_rows: u32,
-    tile_columns: u32,
+    pub tile_rows: u32,
+    pub tile_columns: u32,
 
     bomb_count: u32,
 }

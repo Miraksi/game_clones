@@ -18,11 +18,9 @@ use crate::board::{
     Board,
 };
 
-const TILE_ROWS: u32 = 16;
-const TILE_COLUMNS: u32 = 30;
+const MENU_HEIGHT: u32 = 320;
+const MENU_WIDTH: u32 = 600;
 const TILE_SIZE: u32 = 20;
-
-const BOMB_COUNT: u32 = 99;
 
 enum GameState {
     Menu,
@@ -37,11 +35,11 @@ fn main() -> Result<(), String> {
     let video_subsystem = sdl_context.video()?;
     let text_subsystem = video_subsystem.text_input();
     
-    let window = video_subsystem
+    let mut window = video_subsystem
         .window(
             "Minesweeper",
-            TILE_COLUMNS * TILE_SIZE,
-            TILE_ROWS * TILE_SIZE,
+            MENU_WIDTH,
+            MENU_HEIGHT,
         )
         .position_centered()
         .resizable()
@@ -85,7 +83,7 @@ fn main() -> Result<(), String> {
     let (end_texture, end_rect) = text_texture(&mut texture_creator6, "Game Over!", 24)?;
     
     let (mut pressed_i, mut pressed_j) = (None, None);
-    let mut board = Board::new(TILE_ROWS, TILE_COLUMNS, BOMB_COUNT);
+    let mut board = Board::new(5, 5, 1);
 
     // initialize textbox
     let mut boxes = vec![
@@ -164,7 +162,7 @@ fn main() -> Result<(), String> {
                 canvas.set_draw_color(Color::RGB(50, 50, 50));
                 canvas.clear();
         
-                let center = Rect::new(0,0,TILE_SIZE * TILE_COLUMNS, TILE_SIZE * TILE_ROWS).center();
+                let center = Rect::new(0, 0, MENU_WIDTH, MENU_HEIGHT).center();
                 canvas.copy(
                     &menu_texture,
                     None,
@@ -301,7 +299,7 @@ fn main() -> Result<(), String> {
                 canvas.set_draw_color(Color::RGB(50, 50, 50));
                 canvas.clear();
         
-                let center = Rect::new(0,0,TILE_SIZE * TILE_COLUMNS, TILE_SIZE * TILE_ROWS).center();
+                let center = Rect::new(0,0,TILE_SIZE * board.tile_columns, TILE_SIZE * board.tile_rows).center();
                 canvas.copy(
                     &end_texture,
                     None,
